@@ -1,0 +1,223 @@
+<?php
+
+namespace App\Http\Controllers\Aide;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Nouveau;
+use App\Models\Participation;
+use App\Models\Programme;
+
+class NouveauController extends Controller
+{
+    /**
+     * Vérifie que l'aide a le droit d'accéder à ce nouveau
+     */
+    private function checkAccess(Nouveau $nouveau)
+    {
+        if ($nouveau->aide_id !== Auth::id()) {
+            abort(403, 'Accès non autorisé.');
+        }
+    }
+
+    /**
+     * Liste des nouveaux (vue principale)
+     */
+    public function index()
+{
+    $user = Auth::user();
+    
+    // IMPORTANT: Utilise paginate() au lieu de get()
+    $nouveaux = Nouveau::where('aide_id', $user->id)
+        ->withCount([
+            'participations as total_participations',
+            'participations as presences_count' => function($query) {
+                $query->where('present', true);
+            }
+        ])
+        ->orderBy('created_at', 'desc')
+        ->paginate(10); // ← CHANGER get() EN paginate(10)
+    
+    // Calcule le statut pour chaque nouveau
+    foreach ($nouveaux as $nouveau) {
+        $total = $nouveau->total_participations;
+        $presences = $nouveau->presences_count;
+        
+        if ($total === 0) {
+            $nouveau->statut = [
+                'label' => 'inactif',
+                'pourcentage' => 0,
+                'couleur' => 'red'
+            ];
+        } else {
+            $taux = round(($presences / $total) * 100, 1);
+            
+            if ($taux >= 80) {
+                $nouveau->statut = [
+                    'label' => 'actif',
+                    'pourcentage' => $taux,
+                    'couleur' => 'green'
+                ];
+            } elseif ($taux >= 50) {
+                $nouveau->statut = [
+                    'label' => 'moyen',
+                    'pourcentage' => $taux,
+                    'couleur' => 'yellow'
+                ];
+            } else {
+                $nouveau->statut = [
+                    'label' => 'inactif',
+                    'pourcentage' => $taux,
+                    'couleur' => 'red'
+                ];
+            }
+        }
+        
+        // Ajoute le nom complet
+        $nouveau->full_name = $nouveau->prenom . ' ' . $nouveau->nom;
+    }
+    
+    return view('aide.nouveaux.index', compact('nouveaux'));
+}
+    /**
+     * Formulaire de création
+     */
+    public function create()
+    {
+        return view('aide.nouveaux.create');
+    }
+
+    /**
+     * Enregistrer un nouveau
+     */
+   public function store(Request $request)
+{
+    $validated = $request->validate([
+        'nom' => 'required|string|max:255',
+        'prenom' => 'required|string|max:255',
+        'email' => 'required|email|unique:nouveaux,email',
+        'profession' => 'required|string|max:255',
+        'fij' => 'required|string|max:100', // FIJ = Famille d'Impact Jeune
+        'date_enregistrement' => 'required|date',
+    ]);
+
+    // AJOUTE l'ID de l'aide
+    $validated['aide_id'] = Auth::id();
+
+    Nouveau::create($validated);
+
+    // REDIRECTION CORRECTE :
+    return redirect()->route('aide.nouveaux.index')
+        ->with('success', 'Nouveau ajouté avec succès.');
+}
+
+    /**
+     * Afficher un nouveau (vue détaillée)
+     */
+    public function show(Nouveau $nouveau)
+    {
+        // Vérification de sécurité
+        $this->checkAccess($nouveau);
+
+        // Charge les relations nécessaires
+        $nouveau->load(['participations' => function($query) {
+            $query->with('programme')->orderBy('created_at', 'desc');
+        }]);
+
+        // Calcule les statistiques
+        $stats = [
+            'total_participations' => $nouveau->participations->count(),
+            'presences' => $nouveau->participations->where('present', true)->count(),
+            'absences' => $nouveau->participations->where('present', false)->count(),
+        ];
+
+        return view('aide.nouveaux.show', compact('nouveau', 'stats'));
+    }
+
+    /**
+     * Formulaire d'édition
+     */
+    public function edit(Nouveau $nouveau)
+    {
+        $this->checkAccess($nouveau);
+        return view('aide.nouveaux.edit', compact('nouveau'));
+    }
+
+    /**
+     * Mettre à jour un nouveau
+     */
+    public function update(Request $request, Nouveau $nouveau)
+    {
+        $this->checkAccess($nouveau);
+
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenom' => 'required|string|max:255',
+            'email' => 'required|email|unique:nouveaux,email,' . $nouveau->id,
+            'profession' => 'required|string|max:255',
+            'fij' => 'required|string|max:100',
+        ]);
+
+        $nouveau->update($validated);
+
+        return redirect()->route('aide.nouveaux.show', $nouveau)
+            ->with('success', 'Nouveau modifié avec succès.');
+    }
+
+    /**
+     * Supprimer un nouveau
+     */
+    public function destroy(Nouveau $nouveau)
+    {
+        $this->checkAccess($nouveau);
+        
+        $nouveau->delete();
+
+        return redirect()->route('aide.nouveaux.index')
+            ->with('success', 'Nouveau supprimé avec succès.');
+    }
+
+    /**
+     * Page Détails (Informations personnelles + Historique)
+     */
+    public function details(Nouveau $nouveau)
+    {
+        $this->checkAccess($nouveau);
+
+        // Charge les participations avec les programmes
+        $nouveau->load(['participations' => function($query) {
+            $query->with('programme')->orderBy('created_at', 'desc');
+        }]);
+
+        return view('aide.nouveaux.details', compact('nouveau'));
+    }
+
+    /**
+     * Historique des participations
+     */
+    public function historique(Nouveau $nouveau)
+    {
+        $this->checkAccess($nouveau);
+
+        // Récupère les participations paginées
+        $participations = Participation::where('nouveau_id', $nouveau->id)
+            ->with('programme')
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        return view('aide.nouveaux.historique', compact('nouveau', 'participations'));
+    }
+
+    /**
+     * Marquer présence/absence (à implémenter plus tard)
+     */
+    public function marquerPresence(Request $request, Nouveau $nouveau)
+    {
+        $this->checkAccess($nouveau);
+
+        // Logique à implémenter
+        return redirect()->back()
+            ->with('success', 'Présence enregistrée.');
+    }
+}
