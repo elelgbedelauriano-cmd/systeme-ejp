@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Aide;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\Nouveau;
 use App\Models\Participation;
 use App\Models\Programme;
@@ -25,61 +26,62 @@ class NouveauController extends Controller
      * Liste des nouveaux (vue principale)
      */
     public function index()
-{
-    $user = Auth::user();
-    
-    // IMPORTANT: Utilise paginate() au lieu de get()
-    $nouveaux = Nouveau::where('aide_id', $user->id)
-        ->withCount([
-            'participations as total_participations',
-            'participations as presences_count' => function($query) {
-                $query->where('present', true);
-            }
-        ])
-        ->orderBy('created_at', 'desc')
-        ->paginate(10); // ← CHANGER get() EN paginate(10)
-    
-    // Calcule le statut pour chaque nouveau
-    foreach ($nouveaux as $nouveau) {
-        $total = $nouveau->total_participations;
-        $presences = $nouveau->presences_count;
+    {
+        $user = Auth::user();
         
-        if ($total === 0) {
-            $nouveau->statut = [
-                'label' => 'inactif',
-                'pourcentage' => 0,
-                'couleur' => 'red'
-            ];
-        } else {
-            $taux = round(($presences / $total) * 100, 1);
+        // IMPORTANT: Utilise paginate() au lieu de get()
+        $nouveaux = Nouveau::where('aide_id', $user->id)
+            ->withCount([
+                'participations as total_participations',
+                'participations as presences_count' => function($query) {
+                    $query->where('present', true);
+                }
+            ])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10); // ← CHANGER get() EN paginate(10)
+        
+        // Calcule le statut pour chaque nouveau
+        foreach ($nouveaux as $nouveau) {
+            $total = $nouveau->total_participations;
+            $presences = $nouveau->presences_count;
             
-            if ($taux >= 80) {
-                $nouveau->statut = [
-                    'label' => 'actif',
-                    'pourcentage' => $taux,
-                    'couleur' => 'green'
-                ];
-            } elseif ($taux >= 50) {
-                $nouveau->statut = [
-                    'label' => 'moyen',
-                    'pourcentage' => $taux,
-                    'couleur' => 'yellow'
-                ];
-            } else {
+            if ($total === 0) {
                 $nouveau->statut = [
                     'label' => 'inactif',
-                    'pourcentage' => $taux,
+                    'pourcentage' => 0,
                     'couleur' => 'red'
                 ];
+            } else {
+                $taux = round(($presences / $total) * 100, 1);
+                
+                if ($taux >= 80) {
+                    $nouveau->statut = [
+                        'label' => 'actif',
+                        'pourcentage' => $taux,
+                        'couleur' => 'green'
+                    ];
+                } elseif ($taux >= 50) {
+                    $nouveau->statut = [
+                        'label' => 'moyen',
+                        'pourcentage' => $taux,
+                        'couleur' => 'yellow'
+                    ];
+                } else {
+                    $nouveau->statut = [
+                        'label' => 'inactif',
+                        'pourcentage' => $taux,
+                        'couleur' => 'red'
+                    ];
+                }
             }
+            
+            // Ajoute le nom complet
+            $nouveau->full_name = $nouveau->prenom . ' ' . $nouveau->nom;
         }
         
-        // Ajoute le nom complet
-        $nouveau->full_name = $nouveau->prenom . ' ' . $nouveau->nom;
+        return view('aide.nouveaux.index', compact('nouveaux'));
     }
-    
-    return view('aide.nouveaux.index', compact('nouveaux'));
-}
+
     /**
      * Formulaire de création
      */
@@ -91,26 +93,31 @@ class NouveauController extends Controller
     /**
      * Enregistrer un nouveau
      */
-   public function store(Request $request)
-{
-    $validated = $request->validate([
-        'nom' => 'required|string|max:255',
-        'prenom' => 'required|string|max:255',
-        'email' => 'required|email|unique:nouveaux,email',
-        'profession' => 'required|string|max:255',
-        'fij' => 'required|string|max:100', // FIJ = Famille d'Impact Jeune
-        'date_enregistrement' => 'required|date',
-    ]);
+    public function store(Request $request)
+    {
+        // LOGS POUR DEBUG
+        Log::info('=== TENTATIVE AJOUT NOUVEAU ===');
+        Log::info('Utilisateur ID: ' . Auth::id());
+        Log::info('Données reçues: ' . json_encode($request->all()));
 
-    // AJOUTE l'ID de l'aide
-    $validated['aide_id'] = Auth::id();
+        $validated = $request->validate([
+            'nom' => 'required|string|max:255',
+            'prenom' => 'required|string|max:255',
+            'email' => 'required|email|unique:nouveaux,email',
+            'profession' => 'required|string|max:255',
+            'fij' => 'required|string|max:100',
+            'date_enregistrement' => 'required|date',
+        ]);
 
-    Nouveau::create($validated);
+        $validated['aide_id'] = Auth::id();
 
-    // REDIRECTION CORRECTE :
-    return redirect()->route('aide.nouveaux.index')
-        ->with('success', 'Nouveau ajouté avec succès.');
-}
+        $nouveau = Nouveau::create($validated);
+
+        Log::info('=== SUCCÈS : NOUVEAU CRÉÉ ID ' . $nouveau->id . ' ===');
+
+        return redirect()->route('aide.nouveaux.index')
+            ->with('success', 'Nouveau ajouté avec succès.');
+    }
 
     /**
      * Afficher un nouveau (vue détaillée)
@@ -219,5 +226,23 @@ class NouveauController extends Controller
         // Logique à implémenter
         return redirect()->back()
             ->with('success', 'Présence enregistrée.');
+    }
+    
+    /**
+     * AJOUTÉ : Récupère les statistiques d'un nouveau (pour le modal de suppression)
+     */
+    public function stats(Nouveau $nouveau)
+    {
+        // Vérification de sécurité
+        $this->checkAccess($nouveau);
+        
+        return response()->json([
+            'success' => true,
+            'email' => $nouveau->email,
+            'participations' => $nouveau->participations()->count(),
+            'created_at' => $nouveau->created_at->format('d/m/Y'),
+            'profession' => $nouveau->profession,
+            'fij' => $nouveau->fij
+        ]);
     }
 }

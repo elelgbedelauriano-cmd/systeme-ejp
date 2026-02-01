@@ -74,22 +74,19 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Dernière participation
                                 </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            @php
-                                // Récupère les nouveaux depuis la base de données
-                                use App\Models\Nouveau;
-                                $user = Auth::user();
-                                $nouveaux = Nouveau::where('aide_id', $user->id)->get();
-                            @endphp
-                            
                             @forelse($nouveaux as $nouveau)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="font-medium text-gray-900">
                                             {{ $nouveau->prenom }} {{ $nouveau->nom }}
                                         </div>
+                                        <div class="text-sm text-gray-500">{{ $nouveau->profession }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @php
@@ -127,10 +124,22 @@
                                             Jamais
                                         @endif
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex space-x-2">
+                                            <a href="{{ route('aide.nouveaux.details', $nouveau) }}" 
+                                               class="text-blue-600 hover:text-blue-900">
+                                                <i class="fas fa-info-circle"></i>
+                                            </a>
+                                            <a href="{{ route('aide.participations.programmes') }}" 
+                                               class="text-green-600 hover:text-green-900">
+                                                <i class="fas fa-calendar-check"></i>
+                                            </a>
+                                        </div>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="px-6 py-12 text-center text-gray-500">
+                                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
                                         <i class="fas fa-users text-gray-300 text-4xl mb-3"></i>
                                         <p class="text-lg">Aucun nouveau assigné</p>
                                         <p class="text-sm mt-2">Ajoutez votre premier nouveau pour commencer</p>

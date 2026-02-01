@@ -14,19 +14,29 @@ class ParticipationController extends Controller
     /**
      * Afficher la liste des programmes disponibles
      */
-    public function programmes()
+    public function programmes(Nouveau $nouveau = null)
     {
         $user = Auth::user();
         
-        // Récupère les programmes à venir et en cours
-        $programmes = Programme::where('date_programme', '>=', now()->subDay())
-            ->orderBy('date_programme', 'asc')
-            ->paginate(10);
+        // MODIFIÉ : Récupère TOUS les programmes (3 derniers mois + futurs)
+        $programmes = Programme::where('date_programme', '>=', now()->subMonths(3))
+            ->orWhere('date_programme', '>=', now())
+            ->orderBy('date_programme', 'desc')
+            ->paginate(15);
         
         // Récupère les nouveaux de l'aide
         $nouveaux = Nouveau::where('aide_id', $user->id)->get();
         
-        return view('aide.participations.programmes', compact('programmes', 'nouveaux'));
+        // Si un nouveau est spécifié, vérifie qu'il appartient à l'aide
+        $nouveauSelectionne = null;
+        if ($nouveau) {
+            if ($nouveau->aide_id !== $user->id) {
+                abort(403, 'Accès non autorisé à ce nouveau');
+            }
+            $nouveauSelectionne = $nouveau;
+        }
+        
+        return view('aide.participations.programmes', compact('programmes', 'nouveaux', 'nouveauSelectionne'));
     }
     
     /**
@@ -122,5 +132,59 @@ class ParticipationController extends Controller
         return view('aide.participations.historique', compact(
             'nouveau', 'participations', 'stats', 'timeframe'
         ));
+    }
+    
+    /**
+     * AJOUTÉ : Récupère les statistiques d'un nouveau (API)
+     */
+    public function stats(Nouveau $nouveau)
+    {
+        // Vérification d'accès
+        if ($nouveau->aide_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+        }
+        
+        $total = $nouveau->participations()->count();
+        $presences = $nouveau->participations()->where('present', true)->count();
+        $taux = $total > 0 ? round(($presences / $total) * 100, 1) : 0;
+        
+        return response()->json([
+            'success' => true,
+            'stats' => [
+                'total' => $total,
+                'presences' => $presences,
+                'taux' => $taux
+            ]
+        ]);
+    }
+    
+    /**
+     * AJOUTÉ : Récupère les participations récentes d'un nouveau (API)
+     */
+    public function recentes(Nouveau $nouveau)
+    {
+        // Vérification d'accès
+        if ($nouveau->aide_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+        }
+        
+        $participations = $nouveau->participations()
+            ->with('programme')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($participation) {
+                return [
+                    'programme_titre' => $participation->programme->titre ?? 'Programme',
+                    'present' => $participation->present,
+                    'motif_absence' => $participation->motif_absence,
+                    'date_formatee' => $participation->created_at->format('d/m/Y H:i')
+                ];
+            });
+        
+        return response()->json([
+            'success' => true,
+            'participations' => $participations
+        ]);
     }
 }

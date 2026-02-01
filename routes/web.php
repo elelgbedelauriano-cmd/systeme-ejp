@@ -43,12 +43,9 @@ Route::get('/dashboard', function () {
 // ==================== ROUTES AIDE ====================
 Route::prefix('aide')->name('aide.')->middleware(['auth'])->group(function () {
     
-    // Dashboard Aide
-    Route::get('/dashboard', function() {
-        $user = Auth::user();
-        if ($user->role !== 'aide') abort(403);
-        return view('aide.dashboard');
-    })->name('dashboard');
+    // Dashboard Aide - CHANGE : utilise le contrôleur
+    Route::get('/dashboard', [\App\Http\Controllers\Aide\DashboardController::class, 'index'])
+        ->name('dashboard');
     
     // ===== ROUTES POUR LES NOUVEAUX (COMPLÈTES) =====
     // Liste des nouveaux
@@ -74,19 +71,14 @@ Route::prefix('aide')->name('aide.')->middleware(['auth'])->group(function () {
     // Historique
     Route::get('/nouveaux/{nouveau}/historique', [NouveauController::class, 'historique'])->name('nouveaux.historique');
     
+    // AJOUTÉ : Stats d'un nouveau (pour le modal de suppression)
+    Route::get('/nouveaux/{nouveau}/stats', [NouveauController::class, 'stats'])
+        ->name('nouveaux.stats');
+    
     // ===== ROUTES POUR LES PARTICIPATIONS =====
-    // Liste des programmes
-    Route::get('/participations/programmes', function() {
-        $user = Auth::user();
-        if ($user->role !== 'aide') abort(403);
-        
-       $programmes = App\Models\Programme::where('date_programme', '>=', now())
-    ->where('date_programme', '<=', now()->addDays(7))
-    ->orderBy('date_programme', 'asc')
-    ->get();
-        
-        return view('aide.participations.programmes', compact('programmes'));
-    })->name('participations.programmes');
+    // Liste des programmes - MODIFIÉ : avec paramètre optionnel
+    Route::get('/participations/programmes/{nouveau?}', [ParticipationController::class, 'programmes'])
+        ->name('participations.programmes');
     
     // Enregistrer une présence
     Route::post('/participations/enregistrer', [ParticipationController::class, 'enregistrer'])
@@ -95,6 +87,14 @@ Route::prefix('aide')->name('aide.')->middleware(['auth'])->group(function () {
     // Historique des participations
     Route::get('/participations/{nouveau}/historique', [ParticipationController::class, 'historique'])
         ->name('participations.historique');
+        
+    // AJOUTÉ : Stats d'un nouveau (API)
+    Route::get('/participations/{nouveau}/stats', [ParticipationController::class, 'stats'])
+        ->name('participations.stats');
+        
+    // AJOUTÉ : Participations récentes
+    Route::get('/participations/{nouveau}/recentes', [ParticipationController::class, 'recentes'])
+        ->name('participations.recentes');
 });
 
 // ==================== ROUTES ADMIN ====================
@@ -118,54 +118,31 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::delete('/aides/{user}/remove-nouveau/{nouveau}', [AideController::class, 'removeNouveau'])
         ->name('aides.removeNouveau');
     
-    // CORRECTION ICI : Enlève 'admin.' du nom car il est déjà dans le préfixe
     Route::post('/aides/{user}/reset-password', [AideController::class, 'resetPassword'])
-        ->name('aides.resetPassword'); // CHANGÉ: 'admin.aides.resetPassword' → 'aides.resetPassword'
+        ->name('aides.resetPassword');
     
     // Routes pour les programmes
     Route::resource('programmes', ProgrammeController::class);
     
     // Routes pour les nouveaux (admin)
-    Route::resource('nouveaux', AdminNouveauController::class);
+Route::resource('nouveaux', AdminNouveauController::class)->parameters([
+    'nouveaux' => 'nouveau'
+]);
     
-    // Routes pour les statistiques
-    Route::get('/statistiques', function() {
-        $user = Auth::user();
-        if ($user->role !== 'admin') abort(403);
+        // ===== ROUTES POUR LES STATISTIQUES (AVEC LE CONTROLLER) =====
+    Route::prefix('statistiques')->name('statistiques.')->group(function () {
+        // Page principale des statistiques
+        Route::get('/', [StatistiqueController::class, 'index'])->name('index');
         
-        $totalNouveaux = App\Models\Nouveau::count();
-        $totalAides = App\Models\User::where('role', 'aide')->count();
-        $totalProgrammes = App\Models\Programme::count();
+        // API pour récupérer les données AJAX
+        Route::get('/data', [StatistiqueController::class, 'getData'])->name('data');
         
-        $nouveauxSansAide = App\Models\Nouveau::whereNull('aide_id')->count();
-        $programmesCeMois = App\Models\Programme::whereMonth('date_programme', now()->month)
-            ->whereYear('date_programme', now()->year)
-            ->count();
+        // Export des données
+        Route::get('/export', [StatistiqueController::class, 'export'])->name('export');
         
-        $nouveauxCeMois = App\Models\Nouveau::whereMonth('date_enregistrement', now()->month)
-            ->whereYear('date_enregistrement', now()->year)
-            ->count();
-        
-        $derniersNouveaux = App\Models\Nouveau::with('aide')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
-        
-        $derniersProgrammes = App\Models\Programme::orderBy('date_programme', 'desc')
-            ->limit(5)
-            ->get();
-        
-        return view('admin.statistiques.index', compact(
-            'totalNouveaux', 
-            'totalAides', 
-            'totalProgrammes',
-            'nouveauxSansAide',
-            'programmesCeMois',
-            'nouveauxCeMois',
-            'derniersNouveaux',
-            'derniersProgrammes'
-        ));
-    })->name('statistiques.index');
+        // Détails des statistiques
+        Route::get('/details/{type}', [StatistiqueController::class, 'details'])->name('details');
+    });
     
     Route::get('/rapports', function() {
         $user = Auth::user();

@@ -219,10 +219,13 @@
                 </table>
             </div>
             
-            <!-- Pagination si nécessaire -->
-            @if($nouveaux->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                {{ $nouveaux->links() }}
+                        <!-- Pas de pagination car c'est une collection simple -->
+            @if($nouveaux->count() > 5)
+            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 text-center">
+                <a href="{{ route('admin.aides.nouveaux', $user) }}" 
+                   class="text-blue-600 hover:text-blue-800 font-medium">
+                    Voir tous les {{ $nouveaux->count() }} nouveaux <i class="fas fa-arrow-right ml-1"></i>
+                </a>
             </div>
             @endif
         @else

@@ -9,12 +9,25 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckAide
 {
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return mixed
+     */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::check() && Auth::user()->role === 'aide') {
-            return $next($request);
+        // Vérifier si l'utilisateur est authentifié
+        if (!Auth::check()) {
+            return redirect()->route('login');
         }
-        
-        return redirect('/dashboard')->with('error', 'Accès non autorisé.');
+
+        // Vérifier si l'utilisateur a le rôle 'aide'
+        if (Auth::user()->role !== 'aide') {
+            abort(403, 'Accès réservé aux aides à l\'intégration.');
+        }
+
+        return $next($request);
     }
 }

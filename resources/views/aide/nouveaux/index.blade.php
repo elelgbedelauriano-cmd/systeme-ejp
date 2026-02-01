@@ -87,20 +87,27 @@
                                 </div>
                             </div>
                             
-                           <!-- Boutons d'action -->
-<div class="flex flex-col sm:flex-row gap-3">
-    <!-- Bouton 1: Détails -->
-    <a href="{{ route('aide.nouveaux.details', $nouveau) }}" 
-       class="inline-flex items-center justify-center px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg">
-        <i class="fas fa-info-circle mr-2"></i> Détails
-    </a>
-    
-    <!-- AJOUTE CE BOUTON : -->
-    <a href="{{ route('aide.participations.programmes') }}" 
-       class="inline-flex items-center justify-center px-5 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg">
-        <i class="fas fa-calendar-check mr-2"></i> Présence
-    </a>
-</div>
+                            <!-- Boutons d'action COMPACTS -->
+                            <div class="flex flex-wrap gap-2 mt-3 md:mt-0">
+                                <!-- Bouton Détails -->
+                                <a href="{{ route('aide.nouveaux.details', $nouveau) }}" 
+                                   class="inline-flex items-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm">
+                                    <i class="fas fa-info-circle mr-2"></i> Détails
+                                </a>
+                                
+                                <!-- Bouton Présence -->
+                                <a href="{{ route('aide.participations.programmes', ['nouveau' => $nouveau->id]) }}" 
+                                   class="inline-flex items-center px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-sm">
+                                    <i class="fas fa-calendar-check mr-2"></i> Présence
+                                </a>
+                                
+                                <!-- Bouton Supprimer (AJOUTÉ) -->
+                                <button onclick="confirmSuppression({{ $nouveau->id }}, '{{ $nouveau->prenom }} {{ $nouveau->nom }}')"
+                                        class="inline-flex items-center px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm">
+                                    <i class="fas fa-trash-alt mr-2"></i> Supprimer
+                                </button>
+                            </div>
+                        </div>
                         
                         <!-- Barre de progression du statut -->
                         <div class="mt-6">
@@ -144,5 +151,115 @@
             </div>
         </main>
     </div>
+    
+    <!-- Modal de confirmation suppression -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full">
+            <div class="p-6">
+                <div class="text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-900 mb-2" id="deleteModalTitle">Supprimer ce nouveau ?</h3>
+                    
+                    <div class="mt-4 p-4 bg-red-50 rounded-lg">
+                        <div class="flex items-center">
+                            <i class="fas fa-user-circle text-red-500 text-2xl mr-3"></i>
+                            <div>
+                                <div class="font-bold text-red-800" id="deleteModalName"></div>
+                                <div class="text-red-700 text-sm" id="deleteModalEmail"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-gray-600 mt-4">
+                        Cette action supprimera définitivement ce nouveau et toutes ses participations.
+                        <span class="font-bold text-red-600">Cette action est irréversible.</span>
+                    </p>
+                    
+                    <!-- Statistiques à supprimer -->
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">Participations:</span>
+                            <span class="font-bold" id="deleteModalParticipations">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 flex justify-center space-x-3">
+                    <button type="button" onclick="closeDeleteModal()"
+                            class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                        Annuler
+                    </button>
+                    <form id="deleteForm" method="POST" class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit"
+                                class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center">
+                            <i class="fas fa-trash-alt mr-2"></i> Supprimer définitivement
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Fonction pour ouvrir le modal de suppression
+        function confirmSuppression(nouveauId, nouveauNom) {
+            // Mettre à jour le modal
+            document.getElementById('deleteModalTitle').textContent = 'Supprimer ' + nouveauNom + ' ?';
+            document.getElementById('deleteModalName').textContent = nouveauNom;
+            
+            // Mettre à jour le formulaire
+            const form = document.getElementById('deleteForm');
+            form.action = "{{ route('aide.nouveaux.index') }}/" + nouveauId;
+            
+            // Charger les statistiques via AJAX
+            fetch("{{ url('aide/nouveaux') }}/" + nouveauId + "/stats", {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('deleteModalEmail').textContent = data.email || '';
+                    document.getElementById('deleteModalParticipations').textContent = data.participations || 0;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur chargement stats:', error);
+                document.getElementById('deleteModalEmail').textContent = 'Non disponible';
+                document.getElementById('deleteModalParticipations').textContent = '?';
+            });
+            
+            // Afficher le modal
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+        
+        // Fermer le modal
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+        }
+        
+        // Empêcher la fermeture accidentelle
+        document.getElementById('deleteModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteModal();
+            }
+        });
+        
+        // Confirmation avant soumission
+        document.getElementById('deleteForm').addEventListener('submit', function(e) {
+            if (!confirm('Êtes-vous ABSOLUMENT sûr de vouloir supprimer ce nouveau ?')) {
+                e.preventDefault();
+                return false;
+            }
+            return true;
+        });
+    </script>
 </body>
 </html>

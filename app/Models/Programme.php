@@ -10,7 +10,7 @@ class Programme extends Model
     use HasFactory;
     
     protected $fillable = [
-        'admin_id',
+        'admin_id', // Garder 'admin_id' car c'est le nom dans le contrôleur et la base
         'titre',
         'description',
         'date_programme',
@@ -23,9 +23,22 @@ class Programme extends Model
         'date_programme' => 'datetime',
     ];
     
+    // CORRECTION : utiliser 'admin_id' pour correspondre au champ dans la table
+    public function createur()
+    {
+        return $this->belongsTo(User::class, 'admin_id');
+    }
+    
+    // AJOUT : Relation 'admin' pour compatibilité avec les anciennes vues
     public function admin()
     {
         return $this->belongsTo(User::class, 'admin_id');
+    }
+    
+    // AJOUTÉ : Relation avec les participations
+    public function participations()
+    {
+        return $this->hasMany(Participation::class);
     }
     
     // Accessor pour obtenir juste la date (sans l'heure)

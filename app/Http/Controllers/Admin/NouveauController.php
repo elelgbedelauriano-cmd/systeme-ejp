@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Nouveau;
 use App\Models\User;
+use App\Models\Participation;
 use Illuminate\Http\Request;
 
 class NouveauController extends Controller
@@ -12,6 +13,7 @@ class NouveauController extends Controller
     public function index()
     {
         $nouveaux = Nouveau::with('aide')
+            ->withCount('participations')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
             
@@ -54,12 +56,41 @@ class NouveauController extends Controller
     
     public function show(Nouveau $nouveau)
     {
+        // Charger les participations avec toutes les relations
         $participations = $nouveau->participations()
-            ->with('programme')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-            
-        return view('admin.nouveaux.show', compact('nouveau', 'participations'));
+            ->with(['programme', 'marquePar', 'aide'])
+            ->orderBy('enregistre_le', 'desc')
+            ->get();
+        
+        // Calculer les statistiques CORRECTEMENT
+        $totalParticipations = $participations->count();
+        
+        // IMPORTANT : Utiliser 'present' (booléen) au lieu de 'statut' (string)
+        $presences = $participations->where('present', true)->count();
+        $absences = $participations->where('present', false)->count();
+        
+        $taux = $totalParticipations > 0 ? round(($presences / $totalParticipations) * 100, 1) : 0;
+        
+        // Déterminer le statut
+        if ($totalParticipations === 0) {
+            $statut = ['label' => 'inactif', 'couleur' => 'red'];
+        } elseif ($taux >= 80) {
+            $statut = ['label' => 'actif', 'couleur' => 'green'];
+        } elseif ($taux >= 50) {
+            $statut = ['label' => 'moyen', 'couleur' => 'yellow'];
+        } else {
+            $statut = ['label' => 'inactif', 'couleur' => 'red'];
+        }
+        
+        return view('admin.nouveaux.show', compact(
+            'nouveau', 
+            'participations', 
+            'totalParticipations', 
+            'presences', 
+            'absences', 
+            'taux', 
+            'statut'
+        ));
     }
     
     public function edit(Nouveau $nouveau)
@@ -98,9 +129,31 @@ class NouveauController extends Controller
     
     public function destroy(Nouveau $nouveau)
     {
+        $nouveau->participations()->delete();
         $nouveau->delete();
         
         return redirect()->route('admin.nouveaux.index')
-            ->with('success', 'Nouveau supprimé');
+            ->with('success', 'Nouveau supprimé avec succès');
+    }
+    
+    // Méthode supplémentaire pour corriger les données
+    public function corrigerParticipations($id)
+    {
+        $nouveau = Nouveau::findOrFail($id);
+        
+        // Vérifier et corriger les participations
+        foreach ($nouveau->participations as $participation) {
+            // Si 'statut' est défini mais pas 'present'
+            if (!is_null($participation->statut) && is_null($participation->present)) {
+                $present = ($participation->statut == 'present');
+                $participation->update([
+                    'present' => $present,
+                    'enregistre_le' => $participation->enregistre_le ?? $participation->created_at
+                ]);
+            }
+        }
+        
+        return redirect()->route('admin.nouveaux.show', $nouveau)
+            ->with('success', 'Participations corrigées');
     }
 }

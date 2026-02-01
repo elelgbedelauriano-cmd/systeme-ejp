@@ -12,29 +12,42 @@ class Participation extends Model
     protected $fillable = [
         'nouveau_id', 
         'programme_id', 
-        'present', // AJOUTÉ (booléen: true=présent, false=absent)
+        'present',
         'statut', 
         'motif_absence', 
-        'marque_par'
+        'marque_par',
+        'aide_id',
+        'enregistre_le' // AJOUTÉ
     ];
     
     protected $casts = [
         'statut' => 'string',
-        'present' => 'boolean', // AJOUTÉ
+        'present' => 'boolean',
+        'enregistre_le' => 'datetime', // AJOUTÉ CETTE LIGNE
     ];
     
     public function nouveau()
     {
-        return $this->belongsTo(Nouveau::class);
+        return $this->belongsTo(Nouveau::class, 'nouveau_id');
     }
     
     public function programme()
     {
-        return $this->belongsTo(Programme::class);
+        return $this->belongsTo(Programme::class, 'programme_id');
     }
     
     public function marquePar()
     {
         return $this->belongsTo(User::class, 'marque_par');
+    }
+    
+    public function aide()
+    {
+        return $this->belongsTo(User::class, 'aide_id');
+    }
+    
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'aide_id');
     }
 }

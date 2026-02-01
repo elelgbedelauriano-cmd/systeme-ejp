@@ -12,7 +12,8 @@ class ProgrammeController extends Controller
 {
     public function index()
     {
-        $programmes = Programme::with('admin')
+        // CORRECTION : changer 'admin' en 'createur' et utiliser la relation correcte
+        $programmes = Programme::with('createur')
             ->orderBy('date_programme', 'desc')
             ->paginate(10);
         
@@ -39,6 +40,7 @@ class ProgrammeController extends Controller
         $dateTime = $request->date_programme . ' ' . $request->heure_debut . ':00';
         
         Programme::create([
+            // CORRECTION : utiliser 'admin_id' pour correspondre au champ dans la table
             'admin_id' => Auth::id(),
             'titre' => $request->titre,
             'description' => $request->description,
@@ -58,10 +60,11 @@ class ProgrammeController extends Controller
             ->with('nouveau')
             ->paginate(10);
             
+        // CORRECTION : utiliser 'statut' = 'present' au lieu de 'present' = true
         $stats = [
             'total' => $participations->total(),
-            'presents' => $participations->where('present', true)->count(),
-            'absents' => $participations->where('present', false)->count(),
+            'presents' => $participations->where('statut', 'present')->count(),
+            'absents' => $participations->where('statut', 'absent')->count(),
         ];
         
         return view('admin.programmes.show', compact('programme', 'participations', 'stats'));
