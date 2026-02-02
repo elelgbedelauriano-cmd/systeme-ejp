@@ -16,11 +16,13 @@ class NouveauController extends Controller
      * Vérifie que l'aide a le droit d'accéder à ce nouveau
      */
     private function checkAccess(Nouveau $nouveau)
-    {
-        if ($nouveau->aide_id !== Auth::id()) {
-            abort(403, 'Accès non autorisé.');
-        }
+{
+    // Vérifie que le nouveau appartient à l'aide connecté
+    // CORRECTION: Convertir en int pour éviter les problèmes de type
+    if ((int) $nouveau->aide_id !== (int) Auth::id()) {
+        abort(403, 'Accès non autorisé.');
     }
+}
 
     /**
      * Liste des nouveaux (vue principale)
@@ -203,18 +205,93 @@ class NouveauController extends Controller
     /**
      * Historique des participations
      */
-    public function historique(Nouveau $nouveau)
-    {
-        $this->checkAccess($nouveau);
-
-        // Récupère les participations paginées
-        $participations = Participation::where('nouveau_id', $nouveau->id)
-            ->with('programme')
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-
-        return view('aide.nouveaux.historique', compact('nouveau', 'participations'));
+    public function historique(Request $request, Nouveau $nouveau)
+{
+    $this->checkAccess($nouveau);
+    
+    // Récupère les paramètres de filtrage
+    $periode = $request->input('periode', 'tous');
+    $statut = $request->input('statut', 'tous');
+    
+    // Construction de la requête
+    $query = $nouveau->participations()->with('programme');
+    
+    // Filtre par période
+    if ($periode !== 'tous') {
+        if ($periode === 'semaine') {
+            $query->whereBetween('created_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek()
+            ]);
+        } elseif ($periode === 'mois') {
+            $query->whereBetween('created_at', [
+                now()->startOfMonth(),
+                now()->endOfMonth()
+            ]);
+        } elseif ($periode === 'trimestre') {
+            $query->whereBetween('created_at', [
+                now()->startOfQuarter(),
+                now()->endOfQuarter()
+            ]);
+        }
     }
+    
+    // Filtre par statut
+    if ($statut !== 'tous') {
+        if ($statut === 'present') {
+            $query->where('present', true);
+        } elseif ($statut === 'absent') {
+            $query->where('present', false);
+        }
+    }
+    
+    // Pagination
+    $participations = $query->orderBy('created_at', 'desc')->paginate(10);
+    
+    return view('aide.nouveaux.details', compact('nouveau', 'participations', 'periode', 'statut'));
+}
+
+    // Ajoute cette méthode dans NouveauController.php
+public function historiqueFiltre(Request $request, Nouveau $nouveau)
+{
+    $this->checkAccess($nouveau);
+    
+    // Récupère les paramètres de filtrage
+    $periode = $request->input('periode', 'tous');
+    $statut = $request->input('statut', 'tous');
+    
+    // Construction de la requête
+    $query = $nouveau->participations()->with('programme');
+    
+    // Filtre par période
+    if ($periode !== 'tous') {
+        if ($periode === 'semaine') {
+            $query->whereBetween('created_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek()
+            ]);
+        } elseif ($periode === 'mois') {
+            $query->whereBetween('created_at', [
+                now()->startOfMonth(),
+                now()->endOfMonth()
+            ]);
+        }
+    }
+    
+    // Filtre par statut
+    if ($statut !== 'tous') {
+        if ($statut === 'present') {
+            $query->where('present', true);
+        } elseif ($statut === 'absent') {
+            $query->where('present', false);
+        }
+    }
+    
+    // Pagination
+    $participations = $query->orderBy('created_at', 'desc')->paginate(10);
+    
+    return view('aide.nouveaux.historique', compact('nouveau', 'participations', 'periode', 'statut'));
+}
 
     /**
      * Marquer présence/absence (à implémenter plus tard)

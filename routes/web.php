@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\ProgrammeController;
 use App\Http\Controllers\Admin\NouveauController as AdminNouveauController;
 use App\Http\Controllers\Admin\StatistiqueController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\UserController;
 
 // Page d'accueil - Redirige selon l'état d'authentification
 Route::get('/', function () {
@@ -43,64 +44,48 @@ Route::get('/dashboard', function () {
 // ==================== ROUTES AIDE ====================
 Route::prefix('aide')->name('aide.')->middleware(['auth'])->group(function () {
     
-    // Dashboard Aide - CHANGE : utilise le contrôleur
+    // Dashboard Aide
     Route::get('/dashboard', [\App\Http\Controllers\Aide\DashboardController::class, 'index'])
         ->name('dashboard');
     
-    // ===== ROUTES POUR LES NOUVEAUX (COMPLÈTES) =====
-    // Liste des nouveaux
-    Route::get('/nouveaux', [NouveauController::class, 'index'])->name('nouveaux.index');
-    
-    // Création d'un nouveau
-    Route::get('/nouveaux/create', [NouveauController::class, 'create'])->name('nouveaux.create');
-    Route::post('/nouveaux', [NouveauController::class, 'store'])->name('nouveaux.store');
-    
-    // Visualisation
-    Route::get('/nouveaux/{nouveau}', [NouveauController::class, 'show'])->name('nouveaux.show');
-    
-    // Édition
-    Route::get('/nouveaux/{nouveau}/edit', [NouveauController::class, 'edit'])->name('nouveaux.edit');
-    Route::put('/nouveaux/{nouveau}', [NouveauController::class, 'update'])->name('nouveaux.update');
-    
-    // Suppression
-    Route::delete('/nouveaux/{nouveau}', [NouveauController::class, 'destroy'])->name('nouveaux.destroy');
-    
-    // Détails (page spéciale)
+    // ===== ROUTES POUR LES NOUVEAUX =====
+    Route::resource('nouveaux', NouveauController::class);
     Route::get('/nouveaux/{nouveau}/details', [NouveauController::class, 'details'])->name('nouveaux.details');
-    
-    // Historique
     Route::get('/nouveaux/{nouveau}/historique', [NouveauController::class, 'historique'])->name('nouveaux.historique');
-    
-    // AJOUTÉ : Stats d'un nouveau (pour le modal de suppression)
-    Route::get('/nouveaux/{nouveau}/stats', [NouveauController::class, 'stats'])
-        ->name('nouveaux.stats');
+    Route::get('/nouveaux/{nouveau}/stats', [NouveauController::class, 'stats'])->name('nouveaux.stats');
     
     // ===== ROUTES POUR LES PARTICIPATIONS =====
-    // Liste des programmes - MODIFIÉ : avec paramètre optionnel
     Route::get('/participations/programmes/{nouveau?}', [ParticipationController::class, 'programmes'])
         ->name('participations.programmes');
-    
-    // Enregistrer une présence
     Route::post('/participations/enregistrer', [ParticipationController::class, 'enregistrer'])
         ->name('participations.enregistrer');
-    
-    // Historique des participations
     Route::get('/participations/{nouveau}/historique', [ParticipationController::class, 'historique'])
         ->name('participations.historique');
-        
-    // AJOUTÉ : Stats d'un nouveau (API)
     Route::get('/participations/{nouveau}/stats', [ParticipationController::class, 'stats'])
         ->name('participations.stats');
-        
-    // AJOUTÉ : Participations récentes
     Route::get('/participations/{nouveau}/recentes', [ParticipationController::class, 'recentes'])
         ->name('participations.recentes');
+    
+    // ===== ROUTES POUR LE PROFIL ET MOT DE PASSE =====
+    Route::get('/profile/password', [UserController::class, 'showChangePasswordForm'])
+        ->name('profile.password');
+    Route::post('/profile/password', [UserController::class, 'changePassword'])
+        ->name('profile.password.update');
+    Route::get('/profile', [UserController::class, 'showProfile'])
+        ->name('profile.show');
+    Route::put('/profile', [UserController::class, 'updateProfile'])
+        ->name('profile.update');
+
+        // Routes pour les filtres d'historique
+Route::get('/nouveaux/{nouveau}/historique/filtre', [NouveauController::class, 'historiqueFiltre'])
+    ->name('nouveaux.historique.filtre');
 });
+
 
 // ==================== ROUTES ADMIN ====================
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     
-    // Dashboard Admin avec contrôleur
+    // Dashboard Admin
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Routes pour les aides
@@ -111,13 +96,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Routes supplémentaires pour aides
     Route::get('/aides/{user}/nouveaux', [AideController::class, 'nouveaux'])
         ->name('aides.nouveaux');
-    
     Route::post('/aides/{user}/assign-nouveau', [AideController::class, 'assignNouveau'])
         ->name('aides.assignNouveau');
-    
     Route::delete('/aides/{user}/remove-nouveau/{nouveau}', [AideController::class, 'removeNouveau'])
         ->name('aides.removeNouveau');
-    
     Route::post('/aides/{user}/reset-password', [AideController::class, 'resetPassword'])
         ->name('aides.resetPassword');
     
@@ -125,22 +107,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::resource('programmes', ProgrammeController::class);
     
     // Routes pour les nouveaux (admin)
-Route::resource('nouveaux', AdminNouveauController::class)->parameters([
-    'nouveaux' => 'nouveau'
-]);
+    Route::resource('nouveaux', AdminNouveauController::class)->parameters([
+        'nouveaux' => 'nouveau'
+    ]);
     
-        // ===== ROUTES POUR LES STATISTIQUES (AVEC LE CONTROLLER) =====
+    // Routes pour les statistiques
     Route::prefix('statistiques')->name('statistiques.')->group(function () {
-        // Page principale des statistiques
         Route::get('/', [StatistiqueController::class, 'index'])->name('index');
-        
-        // API pour récupérer les données AJAX
         Route::get('/data', [StatistiqueController::class, 'getData'])->name('data');
-        
-        // Export des données
         Route::get('/export', [StatistiqueController::class, 'export'])->name('export');
-        
-        // Détails des statistiques
         Route::get('/details/{type}', [StatistiqueController::class, 'details'])->name('details');
     });
     

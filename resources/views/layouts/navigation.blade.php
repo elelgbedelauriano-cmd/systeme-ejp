@@ -34,6 +34,17 @@
                     </x-slot>
 
                     <x-slot name="content">
+                        <!-- LIEN POUR CHANGER LE MOT DE PASSE (AJOUTÉ) -->
+                        @if(Auth::user()->isAide())
+                        <x-dropdown-link href="{{ route('aide.profile.password') }}">
+                            <div class="flex items-center">
+                                <i class="fas fa-key mr-2 text-sm"></i>
+                                {{ __('Changer mot de passe') }}
+                            </div>
+                        </x-dropdown-link>
+                        @endif
+
+                        <!-- LIEN PROFILE (ORIGINAL) -->
                         <x-dropdown-link :href="route('profile.edit')">
                             {{ __('Profile') }}
                         </x-dropdown-link>
@@ -41,7 +52,6 @@
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
                                                 this.closest('form').submit();">
@@ -70,6 +80,16 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            
+            <!-- LIEN POUR CHANGER LE MOT DE PASSE (VERSION MOBILE) -->
+            @if(Auth::user()->isAide())
+            <x-responsive-nav-link href="{{ route('aide.profile.password') }}">
+                <div class="flex items-center">
+                    <i class="fas fa-key mr-2"></i>
+                    {{ __('Changer mot de passe') }}
+                </div>
+            </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
@@ -87,7 +107,6 @@
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">

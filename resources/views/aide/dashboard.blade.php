@@ -15,7 +15,7 @@
 <body class="bg-gray-50 min-h-screen">
     <div class="md:flex">
         <!-- Sidebar -->
-        <div class="bg-blue-800 text-white md:w-64">
+        <div class="bg-blue-800 text-white md:w-64 min-h-screen">
             <div class="p-4">
                 <h1 class="text-xl font-bold">
                     <i class="fas fa-hands-helping mr-2"></i>Aide EJP
@@ -32,18 +32,38 @@
                    class="block py-3 px-4 hover:bg-blue-700 {{ request()->routeIs('aide.nouveaux.*') ? 'bg-blue-700' : '' }}">
                     <i class="fas fa-users mr-3"></i> Nouveaux
                 </a>
+                
+                <!-- LIEN POUR CHANGER LE MOT DE PASSE (dans la sidebar seulement) -->
+                <a href="{{ route('aide.profile.password') }}" 
+                   class="block py-3 px-4 hover:bg-blue-700 {{ request()->routeIs('aide.profile.*') ? 'bg-blue-700' : '' }}">
+                    <i class="fas fa-key mr-3"></i> Changer mot de passe
+                </a>
             </nav>
             
-            <form method="POST" action="{{ route('logout') }}" class="p-4 border-t border-blue-700">
-                @csrf
-                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded flex items-center justify-center">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
-                </button>
-            </form>
+            <!-- Section utilisateur en bas -->
+            <div class="absolute bottom-0 w-64 p-4 border-t border-blue-700">
+                <div class="flex items-center mb-4">
+                    <div class="h-10 w-10 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 flex items-center justify-center text-white font-semibold">
+                        {{ substr(Auth::user()->name, 0, 1) }}
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium">{{ Auth::user()->name }}</p>
+                        <p class="text-xs text-blue-300">{{ Auth::user()->email }}</p>
+                    </div>
+                </div>
+                
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded flex items-center justify-center">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+                    </button>
+                </form>
+            </div>
         </div>
         
         <!-- Main Content -->
         <main class="flex-1 p-4 md:p-6">
+            <!-- En-tête SIMPLE (tout à gauche) -->
             <div class="mb-6">
                 <h2 class="text-2xl md:text-3xl font-bold text-gray-800">
                     <i class="fas fa-home mr-2"></i>Accueil
@@ -127,11 +147,13 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex space-x-2">
                                             <a href="{{ route('aide.nouveaux.details', $nouveau) }}" 
-                                               class="text-blue-600 hover:text-blue-900">
+                                               class="text-blue-600 hover:text-blue-900"
+                                               title="Détails">
                                                 <i class="fas fa-info-circle"></i>
                                             </a>
-                                            <a href="{{ route('aide.participations.programmes') }}" 
-                                               class="text-green-600 hover:text-green-900">
+                                            <a href="{{ route('aide.participations.programmes', $nouveau) }}" 
+                                               class="text-green-600 hover:text-green-900"
+                                               title="Marquer présence">
                                                 <i class="fas fa-calendar-check"></i>
                                             </a>
                                         </div>
@@ -150,6 +172,8 @@
                     </table>
                 </div>
             </div>
+            
+            <!-- NOTE : J'ai supprimé la div d'info en bas comme demandé -->
         </main>
     </div>
 </body>

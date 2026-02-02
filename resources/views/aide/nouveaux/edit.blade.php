@@ -126,10 +126,12 @@
                             <!-- FIJ -->
                             <div>
                                 <label for="fij" class="block text-sm font-medium text-gray-700 mb-2">
-                                    FIJ <span class="text-red-500">*</span>
+                                    Famille d'Impact Jeune (FIJ) <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text" id="fij" name="fij" value="{{ old('fij', $nouveau->fij) }}" required
-                                       class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                       class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Ex: Famille Jean, Famille Marie, etc.">
+                                <p class="text-gray-500 text-xs mt-1">Nom de la famille d'impact du jeune</p>
                                 @error('fij')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -171,77 +173,7 @@
                 </form>
             </div>
             
-            <!-- Statistiques actuelles -->
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-blue-50 border border-blue-200 rounded-xl p-5">
-                    <h4 class="font-bold text-blue-800 mb-3">
-                        <i class="fas fa-chart-pie mr-2"></i>Statistiques actuelles
-                    </h4>
-                    <div class="space-y-2">
-                        <div class="flex justify-between">
-                            <span class="text-blue-700">Programmes:</span>
-                            <span class="font-bold">{{ $nouveau->participations->count() }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-green-700">Présences:</span>
-                            <span class="font-bold">{{ $nouveau->participations->where('present', true)->count() }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-red-700">Absences:</span>
-                            <span class="font-bold">{{ $nouveau->participations->where('present', false)->count() }}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
-                    <h4 class="font-bold text-yellow-800 mb-3">
-                        <i class="fas fa-calendar-alt mr-2"></i>Dernière participation
-                    </h4>
-                    @if($nouveau->participations->count() > 0)
-                        @php
-                            $last = $nouveau->participations->sortByDesc('created_at')->first();
-                        @endphp
-                        <div class="space-y-2">
-                            <div class="flex items-center">
-                                <i class="fas fa-calendar-day text-yellow-600 mr-2"></i>
-                                <span>{{ $last->created_at->format('d/m/Y') }}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fas fa-{{ $last->present ? 'check text-green-600' : 'times text-red-600' }} mr-2"></i>
-                                <span>{{ $last->present ? 'Présent' : 'Absent' }}</span>
-                            </div>
-                            @if(!$last->present && $last->motif_absence)
-                                <div class="text-sm text-gray-600 mt-2">
-                                    <i class="fas fa-comment mr-1"></i>
-                                    {{ Str::limit($last->motif_absence, 50) }}
-                                </div>
-                            @endif
-                        </div>
-                    @else
-                        <p class="text-yellow-700">Aucune participation</p>
-                    @endif
-                </div>
-                
-                <div class="bg-purple-50 border border-purple-200 rounded-xl p-5">
-                    <h4 class="font-bold text-purple-800 mb-3">
-                        <i class="fas fa-info-circle mr-2"></i>Informations
-                    </h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex items-center text-purple-700">
-                            <i class="fas fa-user-plus mr-2"></i>
-                            <span>Ajouté le {{ $nouveau->created_at->format('d/m/Y') }}</span>
-                        </div>
-                        <div class="flex items-center text-purple-700">
-                            <i class="fas fa-sync-alt mr-2"></i>
-                            <span>Dernière modif: {{ $nouveau->updated_at->format('d/m/Y') }}</span>
-                        </div>
-                        <div class="flex items-center text-purple-700">
-                            <i class="fas fa-id-badge mr-2"></i>
-                            <span>FIJ: {{ $nouveau->fij }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- NOTE: Section des statistiques SUPPRIMÉE comme demandé -->
         </main>
     </div>
     

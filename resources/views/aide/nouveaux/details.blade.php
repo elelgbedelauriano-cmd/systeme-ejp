@@ -78,14 +78,11 @@
                     </div>
                     
                     <div class="flex space-x-3 mt-4 md:mt-0">
+                        <!-- BOUTON MODIFIER SEULEMENT (bouton Marquer présence supprimé) -->
                         <a href="{{ route('aide.nouveaux.edit', $nouveau) }}" 
-                           class="inline-flex items-center px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg">
+                           class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow">
                             <i class="fas fa-edit mr-2"></i> Modifier
                         </a>
-                        <button onclick="showPresenceModal()"
-                                class="inline-flex items-center px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg">
-                            <i class="fas fa-calendar-check mr-2"></i> Marquer présence
-                        </button>
                     </div>
                 </div>
             </div>
@@ -141,18 +138,23 @@
                                 <i class="fas fa-file-alt mr-2"></i>Informations administratives
                             </h3>
                             
-                           <div>
-    <label for="fij" class="block text-sm font-medium text-gray-700 mb-2">
-        Famille d'Impact Jeune (FIJ) <span class="text-red-500">*</span>
-    </label>
-    <input type="text" id="fij" name="fij" required
-           class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-           placeholder="Ex: Famille Jean, Famille Marie, etc.">
-    <p class="text-gray-500 text-xs mt-1">Nom de la famille d'impact du jeune</p>
-    @error('fij')
-        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-    @enderror
-</div>
+                            <div class="space-y-4">
+                                <!-- FIJ AFFICHÉE CORRECTEMENT -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Famille d'Impact Jeune (FIJ)
+                                    </label>
+                                    <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <p class="text-gray-900 font-medium">
+                                            {{ $nouveau->fij ?? 'Non spécifiée' }}
+                                        </p>
+                                        @if(!$nouveau->fij)
+                                            <p class="text-gray-500 text-xs mt-1">
+                                                Modifiez les informations pour ajouter la FIJ
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-500">Date d'enregistrement</label>
@@ -176,66 +178,52 @@
                     </div>
                 </div>
                 
-                <!-- Statistiques rapides -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="info-card bg-white p-5 rounded-xl shadow">
-                        <div class="text-2xl font-bold text-blue-600">
-                            {{ $nouveau->participations->count() }}
-                        </div>
-                        <div class="text-sm text-gray-600">Programmes</div>
-                    </div>
-                    
-                    <div class="info-card bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
-                        <div class="text-2xl font-bold text-green-600">
-                            {{ $nouveau->participations->where('present', true)->count() }}
-                        </div>
-                        <div class="text-sm text-gray-600">Présences</div>
-                    </div>
-                    
-                    <div class="info-card bg-white p-5 rounded-xl shadow border-l-4 border-red-500">
-                        <div class="text-2xl font-bold text-red-600">
-                            {{ $nouveau->participations->where('present', false)->count() }}
-                        </div>
-                        <div class="text-sm text-gray-600">Absences</div>
-                    </div>
-                    
-                    <div class="info-card bg-white p-5 rounded-xl shadow border-l-4 border-purple-500">
-                        <div class="text-2xl font-bold text-purple-600">
-                            {{ $nouveau->statut['pourcentage'] }}%
-                        </div>
-                        <div class="text-sm text-gray-600">Taux de présence</div>
-                    </div>
-                </div>
+                <!-- NOTE: Section des statistiques rapides SUPPRIMÉE comme demandé -->
             </div>
             
-            <!-- Contenu Tab 2: Historique -->
+            <!-- Contenu Tab 2: Historique (AVEC FILTRES FONCTIONNELS) -->
             <div id="content-historique" class="space-y-6 hidden">
-                <!-- Filtres -->
+                <!-- Filtres FONCTIONNELS -->
                 <div class="bg-white p-5 rounded-xl shadow">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-2">Filtrer l'historique</h3>
-                            <div class="flex flex-wrap gap-3">
-                                <select class="border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    <option>Cette semaine</option>
-                                    <option>Ce mois</option>
-                                    <option>Trimestre</option>
-                                    <option>Tout l'historique</option>
-                                </select>
-                                <select class="border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    <option>Tous les statuts</option>
-                                    <option>Présents uniquement</option>
-                                    <option>Absents uniquement</option>
+                    <form method="GET" action="{{ route('aide.nouveaux.details', $nouveau) }}" class="space-y-4">
+                        <input type="hidden" name="tab" value="historique">
+                        <h3 class="font-bold text-gray-800 mb-2">Filtrer l'historique</h3>
+                        <div class="flex flex-col md:flex-row md:items-center gap-4">
+                            <!-- Filtre par période -->
+                            <div>
+                                <select name="periode" class="border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+                                    <option value="tous">Toutes les périodes</option>
+                                    <option value="semaine" {{ request('periode') == 'semaine' ? 'selected' : '' }}>Cette semaine</option>
+                                    <option value="mois" {{ request('periode') == 'mois' ? 'selected' : '' }}>Ce mois</option>
+                                    <option value="trimestre" {{ request('periode') == 'trimestre' ? 'selected' : '' }}>Ce trimestre</option>
                                 </select>
                             </div>
+                            
+                            <!-- Filtre par statut -->
+                            <div>
+                                <select name="statut" class="border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 px-3 py-2">
+                                    <option value="tous">Tous les statuts</option>
+                                    <option value="present" {{ request('statut') == 'present' ? 'selected' : '' }}>Présents uniquement</option>
+                                    <option value="absent" {{ request('statut') == 'absent' ? 'selected' : '' }}>Absents uniquement</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Boutons -->
+                            <div class="flex gap-2">
+                                <button type="submit" 
+                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    <i class="fas fa-filter mr-2"></i> Appliquer
+                                </button>
+                                <a href="{{ route('aide.nouveaux.details', $nouveau) }}?tab=historique" 
+                                   class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                                    <i class="fas fa-redo mr-2"></i> Réinitialiser
+                                </a>
+                            </div>
                         </div>
-                        <button class="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">
-                            <i class="fas fa-download mr-2"></i> Exporter
-                        </button>
-                    </div>
+                    </form>
                 </div>
                 
-                <!-- Liste des participations -->
+                <!-- Liste des participations (AVEC DONNÉES FILTRÉES) -->
                 <div class="bg-white rounded-xl shadow overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -259,7 +247,43 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($nouveau->participations->sortByDesc('created_at') as $participation)
+                                @php
+                                    // Récupérer les participations filtrées
+                                    $participationsQuery = $nouveau->participations()->with('programme');
+                                    
+                                    // Appliquer les filtres
+                                    if(request('periode') && request('periode') !== 'tous') {
+                                        if(request('periode') === 'semaine') {
+                                            $participationsQuery->whereBetween('created_at', [
+                                                now()->startOfWeek(),
+                                                now()->endOfWeek()
+                                            ]);
+                                        } elseif(request('periode') === 'mois') {
+                                            $participationsQuery->whereBetween('created_at', [
+                                                now()->startOfMonth(),
+                                                now()->endOfMonth()
+                                            ]);
+                                        } elseif(request('periode') === 'trimestre') {
+                                            $participationsQuery->whereBetween('created_at', [
+                                                now()->startOfQuarter(),
+                                                now()->endOfQuarter()
+                                            ]);
+                                        }
+                                    }
+                                    
+                                    // Filtre par statut
+                                    if(request('statut') && request('statut') !== 'tous') {
+                                        if(request('statut') === 'present') {
+                                            $participationsQuery->where('present', true);
+                                        } elseif(request('statut') === 'absent') {
+                                            $participationsQuery->where('present', false);
+                                        }
+                                    }
+                                    
+                                    $participations = $participationsQuery->orderBy('created_at', 'desc')->get();
+                                @endphp
+                                
+                                @forelse($participations as $participation)
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="font-medium text-gray-900">
@@ -300,7 +324,13 @@
                                         <td colspan="5" class="px-6 py-12 text-center text-gray-500">
                                             <i class="fas fa-history text-gray-300 text-4xl mb-3"></i>
                                             <p class="text-lg">Aucune participation enregistrée</p>
-                                            <p class="text-sm mt-2">Les participations apparaîtront ici</p>
+                                            <p class="text-sm mt-2">
+                                                @if(request('periode') !== 'tous' || request('statut') !== 'tous')
+                                                    Aucune participation ne correspond à vos filtres
+                                                @else
+                                                    Les participations apparaîtront ici
+                                                @endif
+                                            </p>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -324,88 +354,8 @@
         </main>
     </div>
     
-    <!-- Modal pour marquer présence (similaire à index.blade.php) -->
-    <div id="presenceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-gray-800">Marquer présence/absence</h3>
-                    <button onclick="closePresenceModal()" class="text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-times text-2xl"></i>
-                    </button>
-                </div>
-                
-                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-user-circle text-blue-500 text-2xl mr-3"></i>
-                        <div>
-                            <div class="font-bold text-blue-800">{{ $nouveau->full_name }}</div>
-                            <div class="text-blue-700 text-sm">{{ $nouveau->profession }}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="space-y-4">
-                    <div class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer" onclick="selectProgrammeForDetails(1)">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <h4 class="font-bold text-gray-800">Culte de Jeunesse</h4>
-                                <p class="text-gray-600 text-sm">Vendredi 24 Janvier • 19h00</p>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-400"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="border rounded-lg p-4 hover:border-blue-300 cursor-pointer" onclick="selectProgrammeForDetails(2)">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <h4 class="font-bold text-gray-800">Étude Biblique</h4>
-                                <p class="text-gray-600 text-sm">Mercredi 22 Janvier • 18h30</p>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-400"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="presenceFormDetails" class="hidden mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 class="font-bold text-gray-800 mb-4" id="programmeTitleDetails"></h4>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
-                            <div class="flex space-x-4">
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="presenceDetails" value="present" class="h-5 w-5 text-green-600" checked>
-                                    <span class="ml-2 text-gray-700">Présent</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="presenceDetails" value="absent" class="h-5 w-5 text-red-600">
-                                    <span class="ml-2 text-gray-700">Absent</span>
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div id="motifContainerDetails" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Motif d'absence</label>
-                            <textarea id="motifDetails" rows="3" class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Raison de l'absence..."></textarea>
-                        </div>
-                        
-                        <div class="flex justify-end space-x-3 pt-4">
-                            <button type="button" onclick="closePresenceModal()" class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                                Annuler
-                            </button>
-                            <button type="button" onclick="enregistrerPresenceDetails()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                <i class="fas fa-save mr-2"></i> Enregistrer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <script>
-        // Gestion des tabs
+        // Gestion des tabs avec préservation des paramètres GET
         function showTab(tabName) {
             // Masquer tous les contenus
             document.getElementById('content-infos').classList.add('hidden');
@@ -423,43 +373,38 @@
             // Activer le tab sélectionné
             document.getElementById(`tab-${tabName}`).classList.add('tab-active', 'text-blue-700');
             document.getElementById(`tab-${tabName}`).classList.remove('text-gray-500');
+            
+            // Si on passe à l'historique et qu'il y a des filtres, on les garde
+            if (tabName === 'historique') {
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.set('tab', 'historique');
+                history.replaceState(null, '', '?' + urlParams.toString());
+            }
         }
         
-        // Modal présence
-        function showPresenceModal() {
-            document.getElementById('presenceModal').classList.remove('hidden');
-        }
-        
-        function closePresenceModal() {
-            document.getElementById('presenceModal').classList.add('hidden');
-            document.getElementById('presenceFormDetails').classList.add('hidden');
-            document.getElementById('motifDetails').value = '';
-            document.querySelector('input[name="presenceDetails"][value="present"]').checked = true;
-            document.getElementById('motifContainerDetails').classList.add('hidden');
-        }
-        
-        function selectProgrammeForDetails(programmeId) {
-            const programmeTitle = document.querySelector(`[onclick="selectProgrammeForDetails(${programmeId})"] h4`).textContent;
-            document.getElementById('programmeTitleDetails').textContent = programmeTitle;
-            document.getElementById('presenceFormDetails').classList.remove('hidden');
-        }
-        
-        // Afficher/masquer motif d'absence
-        document.querySelectorAll('input[name="presenceDetails"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                document.getElementById('motifContainerDetails').classList.toggle('hidden', this.value !== 'absent');
-            });
+        // Au chargement, vérifier si on doit afficher l'historique
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab');
+            
+            if (tab === 'historique') {
+                showTab('historique');
+            }
+            
+            // Conserver les filtres dans les formulaires
+            const periode = urlParams.get('periode');
+            const statut = urlParams.get('statut');
+            
+            if (periode) {
+                const periodeSelect = document.querySelector('select[name="periode"]');
+                if (periodeSelect) periodeSelect.value = periode;
+            }
+            
+            if (statut) {
+                const statutSelect = document.querySelector('select[name="statut"]');
+                if (statutSelect) statutSelect.value = statut;
+            }
         });
-        
-        function enregistrerPresenceDetails() {
-            const presence = document.querySelector('input[name="presenceDetails"]:checked').value;
-            const motif = document.getElementById('motifDetails').value;
-            
-            // Simulation
-            alert(`Présence enregistrée pour {{ $nouveau->full_name }}\nStatut: ${presence}\nMotif: ${motif || 'Aucun'}`);
-            
-            closePresenceModal();
-        }
     </script>
 </body>
 </html>

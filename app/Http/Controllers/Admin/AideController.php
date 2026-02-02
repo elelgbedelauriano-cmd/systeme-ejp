@@ -28,24 +28,24 @@ class AideController extends Controller
         return view('admin.aides.create');
     }
     
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-        
-        $aide = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-            'role' => 'aide',
-        ]);
-        
-        return redirect()->route('admin.aides.index')
-            ->with('success', 'Aide créé avec succès');
-    }
+  public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+    
+    $aide = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password), // ← CORRIGÉ ICI
+        'role' => 'aide',
+    ]);
+    
+    return redirect()->route('admin.aides.index')
+        ->with('success', 'Aide créé avec succès');
+}
     
   public function show(User $user)
 {
